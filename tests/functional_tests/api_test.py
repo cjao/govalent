@@ -9,6 +9,7 @@ import uuid
 
 import covalent as ct
 from covalent._dispatcher_plugins.local import LocalDispatcher, strip_local_uris, ResultSchema
+from hmac import digest
 
 DISPATCHER_ADDR="http://localhost:48008"
 
@@ -158,9 +159,10 @@ def test_export_manifest(mock_manifest):
         submitted_node = submitted_tg.nodes[i]
         assert exported_node.assets.model_dump().keys() == submitted_node.assets.model_dump().keys()
         for name, asset in exported_node.assets:
-            # Some assets are optional
             if not asset:
                 continue
+            assert asset.size == submitted_node.assets.__dict__[name].size
+            assert asset.digest == submitted_node.assets.__dict__[name].digest
             if asset.size > 0:
                 assert len(asset.remote_uri) > 0
             if asset.size == 0:
