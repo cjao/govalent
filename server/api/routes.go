@@ -178,6 +178,11 @@ func (m *GovalentAPIServer) AddRoutes(c *common.Config, d *sql.DB) {
 		dbPool:      d,
 		handlerFunc: handleExportManifest,
 	}
+	get_dispatch_asset_links_handler := RequestHandler{
+		config:      c,
+		dbPool:      d,
+		handlerFunc: handleGetDispatchAssetLinks,
+	}
 	create_assets_handler := RequestHandler{
 		config:      c,
 		dbPool:      d,
@@ -189,11 +194,20 @@ func (m *GovalentAPIServer) AddRoutes(c *common.Config, d *sql.DB) {
 		handlerFunc: handleExportAssets,
 	}
 
+	get_electron_asset_links_handler := RequestHandler{
+		config:      c,
+		dbPool:      d,
+		handlerFunc: handleGetElectronAssetLinks,
+	}
+
 	m.AddRoute("GET /config", dump_config_handler)
 	m.AddRoute("POST /dispatches", create_dispatch_handler)
 	m.AddRoute("GET /dispatches", bulk_get_dispatches_handler)
 	m.AddRoute("DELETE /dispatches/{dispatch_id}", delete_dispatch_handler)
 	m.AddRoute("GET /dispatches/{dispatch_id}", export_manifest_handler)
+	m.AddRoute("GET /dispatches/{dispatch_id}/assets", get_dispatch_asset_links_handler)
+
+	m.AddRoute("GET /dispatches/{dispatch_id}/electrons/{node_id}/assets", get_electron_asset_links_handler)
 
 	m.AddRoute("POST /assets", create_assets_handler)
 	m.AddRoute("GET /assets", export_assets_handler)

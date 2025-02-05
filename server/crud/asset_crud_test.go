@@ -46,7 +46,7 @@ func TestCreateAssets(t *testing.T) {
 	}
 }
 
-func TestCreateDispatchAssetLinks(t *testing.T) {
+func TestCreateGetDispatchAssetLinks(t *testing.T) {
 
 	config := common.NewConfigFromEnv()
 	d := newMockDB(t)
@@ -76,7 +76,7 @@ func TestCreateDispatchAssetLinks(t *testing.T) {
 	tx.Rollback()
 }
 
-func TestCreateDispatchAssets(t *testing.T) {
+func TestCreateGetDispatchAssets(t *testing.T) {
 	config := common.NewConfigFromEnv()
 	d := newMockDB(t)
 	tx, db_err := d.Begin()
@@ -113,7 +113,7 @@ func TestCreateDispatchAssets(t *testing.T) {
 	tx.Rollback()
 }
 
-func TestCreateElectronAssetLinks(t *testing.T) {
+func TestCreateGetElectronAssetLinks(t *testing.T) {
 	config := common.NewConfigFromEnv()
 	d := newMockDB(t)
 	// asset_body_1 := newMockAsset(
@@ -137,7 +137,7 @@ func TestCreateElectronAssetLinks(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	links, err := getElectronAssetLinks(tx, dispatch.Metadata.DispatchId, electron.NodeId)
+	links, err := GetElectronAssetLinks(tx, dispatch.Metadata.DispatchId, electron.NodeId)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

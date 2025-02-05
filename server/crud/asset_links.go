@@ -14,24 +14,24 @@ import (
 type ElectronAssetLink struct {
 	id          string
 	electron_id int
-	asset_id    string
-	name        string
+	AssetId     string
+	Name        string
 }
 
 func NewElectronAsset(electron_id int, asset_key string, name string) ElectronAssetLink {
 	return ElectronAssetLink{
 		id:          fmt.Sprintf("%d-%s", electron_id, name),
 		electron_id: electron_id,
-		asset_id:    ComputeAssetId(asset_key),
-		name:        name,
+		AssetId:     ComputeAssetId(asset_key),
+		Name:        name,
 	}
 }
 
 func (l *ElectronAssetLink) init(electron_id int, asset_key string, name string) {
 	l.id = fmt.Sprintf("%d-%s", electron_id, name)
 	l.electron_id = electron_id
-	l.asset_id = ComputeAssetId(asset_key)
-	l.name = name
+	l.AssetId = ComputeAssetId(asset_key)
+	l.Name = name
 }
 
 func (l *ElectronAssetLink) Fields() []string {
@@ -47,8 +47,8 @@ func (l *ElectronAssetLink) Values() []any {
 	return []any{
 		l.id,
 		l.electron_id,
-		l.asset_id,
-		l.name,
+		l.AssetId,
+		l.Name,
 	}
 }
 
@@ -56,8 +56,8 @@ func (l *ElectronAssetLink) Fieldrefs() []any {
 	return []any{
 		&l.id,
 		&l.electron_id,
-		&l.asset_id,
-		&l.name,
+		&l.AssetId,
+		&l.Name,
 	}
 }
 
@@ -75,24 +75,24 @@ func (l *ElectronAssetLink) Joins() []JoinCondition {
 type DispatchAssetLink struct {
 	id          string
 	dispatch_id string
-	asset_id    string
-	name        string
+	AssetId     string
+	Name        string
 }
 
 func NewDispatchAsset(dispatch_id, asset_key, name string) DispatchAssetLink {
 	return DispatchAssetLink{
 		id:          fmt.Sprintf("%s-%s", dispatch_id, name),
 		dispatch_id: dispatch_id,
-		asset_id:    ComputeAssetId(asset_key),
-		name:        name,
+		AssetId:     ComputeAssetId(asset_key),
+		Name:        name,
 	}
 }
 
 func (l *DispatchAssetLink) init(dispatch_id, asset_key, name string) {
 	l.id = fmt.Sprintf("%s-%s", dispatch_id, name)
 	l.dispatch_id = dispatch_id
-	l.asset_id = ComputeAssetId(asset_key)
-	l.name = name
+	l.AssetId = ComputeAssetId(asset_key)
+	l.Name = name
 }
 
 func (l *DispatchAssetLink) Fields() []string {
@@ -108,8 +108,8 @@ func (l *DispatchAssetLink) Values() []any {
 	return []any{
 		l.id,
 		l.dispatch_id,
-		l.asset_id,
-		l.name,
+		l.AssetId,
+		l.Name,
 	}
 }
 
@@ -117,8 +117,8 @@ func (l *DispatchAssetLink) Fieldrefs() []any {
 	return []any{
 		&l.id,
 		&l.dispatch_id,
-		&l.asset_id,
-		&l.name,
+		&l.AssetId,
+		&l.Name,
 	}
 }
 
@@ -297,7 +297,7 @@ func CreateElectronAssetLinks(t *sql.Tx, links []ElectronAssetLink) *models.APIE
 	return nil
 }
 
-func getElectronAssetLinks(t *sql.Tx, dispatch_id string, node_id int) ([]ElectronAssetLink, *models.APIError) {
+func GetElectronAssetLinks(t *sql.Tx, dispatch_id string, node_id int) ([]ElectronAssetLink, *models.APIError) {
 	results := make([]ElectronAssetLink, 0)
 	count := 0
 	f := Filters{}

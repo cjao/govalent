@@ -70,3 +70,21 @@ func (r *BulkAssetGetResponse) EncodeJSON(enc *json.Encoder) *APIError {
 	}
 	return nil
 }
+
+// Asset links
+type AssetLink struct {
+	AssetId string
+	Name    string
+}
+
+type AssetLinksResponse struct {
+	Records []AssetLink
+}
+
+func (r *AssetLinksResponse) EncodeJSON(enc *json.Encoder) *APIError {
+	json_err := enc.Encode(r)
+	if json_err != nil {
+		return NewGenericServerError(json_err)
+	}
+	return nil
+}
