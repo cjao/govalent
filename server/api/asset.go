@@ -98,16 +98,16 @@ func getDispatchAssetLinks(c *common.Config, d *sql.DB, dispatch_id string) ([]m
 	if db_err != nil {
 		return nil, models.NewGenericServerError(db_err)
 	}
-	dispatch_asset_links, err := crud.GetDispatchAssetLinks(tx, dispatch_id)
+	dispatch_assets, err := crud.GetDispatchAssets(c, tx, dispatch_id)
 	// TODO: handle dispatch not found
 	if err != nil {
 		tx.Rollback()
 		return nil, models.NewGenericServerError(err)
 	}
-	links := make([]models.AssetLink, len(dispatch_asset_links))
+	links := make([]models.AssetLink, len(dispatch_assets))
 	for i := range links {
-		links[i].AssetId = dispatch_asset_links[i].AssetId
-		links[i].Name = dispatch_asset_links[i].Name
+		links[i].Asset = dispatch_assets[i].Asset.GetPublicEntity(c)
+		links[i].Name = dispatch_assets[i].Name
 	}
 	tx.Rollback()
 	return links, nil
@@ -134,16 +134,16 @@ func getElectronAssetLinks(c *common.Config, d *sql.DB, dispatch_id string, node
 	if db_err != nil {
 		return nil, models.NewGenericServerError(db_err)
 	}
-	electron_asset_links, err := crud.GetElectronAssetLinks(tx, dispatch_id, node_id)
+	electron_assets, err := crud.GetElectronAssets(c, tx, dispatch_id, node_id)
 	// TODO: handle dispatch not found
 	if err != nil {
 		tx.Rollback()
 		return nil, models.NewGenericServerError(err)
 	}
-	links := make([]models.AssetLink, len(electron_asset_links))
+	links := make([]models.AssetLink, len(electron_assets))
 	for i := range links {
-		links[i].AssetId = electron_asset_links[i].AssetId
-		links[i].Name = electron_asset_links[i].Name
+		links[i].Asset = electron_assets[i].Asset.GetPublicEntity(c)
+		links[i].Name = electron_assets[i].Name
 	}
 	tx.Rollback()
 	return links, nil

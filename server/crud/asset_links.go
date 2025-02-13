@@ -122,6 +122,96 @@ func (l *DispatchAssetLink) Fieldrefs() []any {
 	}
 }
 
+type DispatchAssetEntity struct {
+	Name  string
+	Asset AssetEntity
+}
+
+func NewDispatchAssetEntity() DispatchAssetEntity {
+	return DispatchAssetEntity{
+		Asset: NewAssetEntity(),
+	}
+}
+
+// Use fully qualified column names
+func (e *DispatchAssetEntity) Fields() []string {
+	fields := []string{strings.Join([]string{db.DISPATCH_ASSET_TABLE, db.DISPATCH_ASSET_TABLE_NAME}, ".")}
+	for _, item := range e.Asset.Fields() {
+		fields = append(fields, strings.Join([]string{db.ASSET_TABLE, item}, "."))
+	}
+	return fields
+}
+
+func (e *DispatchAssetEntity) Fieldrefs() []any {
+	return append([]any{&e.Name}, e.Asset.Fieldrefs()...)
+}
+
+func (e *DispatchAssetEntity) Values() []any {
+	return append([]any{e.Name}, e.Asset.Values()...)
+}
+
+func (e *DispatchAssetEntity) Joins() []JoinCondition {
+	return []JoinCondition{
+		JoinCondition{
+			LeftTable:  db.DISPATCH_ASSET_TABLE,
+			RightTable: db.ASSET_TABLE,
+			LeftCol:    db.DISPATCH_ASSET_TABLE_ASSET_ID,
+			RightCol:   db.ASSET_TABLE_ID,
+		},
+		JoinCondition{
+			LeftTable:  db.DISPATCH_ASSET_TABLE,
+			RightTable: db.DISPATCH_TABLE,
+			LeftCol:    db.DISPATCH_ASSET_TABLE_META_ID,
+			RightCol:   db.DISPATCH_TABLE_ID,
+		},
+	}
+}
+
+type ElectronAssetEntity struct {
+	Name  string
+	Asset AssetEntity
+}
+
+func NewElectronAssetEntity() ElectronAssetEntity {
+	return ElectronAssetEntity{
+		Asset: NewAssetEntity(),
+	}
+}
+
+// Use fully qualified column names
+func (e *ElectronAssetEntity) Fields() []string {
+	fields := []string{strings.Join([]string{db.ELECTRON_ASSET_TABLE, db.ELECTRON_ASSET_TABLE_NAME}, ".")}
+	for _, item := range e.Asset.Fields() {
+		fields = append(fields, strings.Join([]string{db.ASSET_TABLE, item}, "."))
+	}
+	return fields
+}
+
+func (e *ElectronAssetEntity) Fieldrefs() []any {
+	return append([]any{&e.Name}, e.Asset.Fieldrefs()...)
+}
+
+func (e *ElectronAssetEntity) Values() []any {
+	return append([]any{e.Name}, e.Asset.Values()...)
+}
+
+func (e *ElectronAssetEntity) Joins() []JoinCondition {
+	return []JoinCondition{
+		JoinCondition{
+			LeftTable:  db.ELECTRON_ASSET_TABLE,
+			RightTable: db.ASSET_TABLE,
+			LeftCol:    db.ELECTRON_ASSET_TABLE_ASSET_ID,
+			RightCol:   db.ASSET_TABLE_ID,
+		},
+		JoinCondition{
+			LeftTable:  db.ELECTRON_ASSET_TABLE,
+			RightTable: db.ELECTRON_TABLE,
+			LeftCol:    db.ELECTRON_ASSET_TABLE_META_ID,
+			RightCol:   db.ELECTRON_TABLE_ID,
+		},
+	}
+}
+
 func CreateDispatchAssetLinks(t *sql.Tx, links []DispatchAssetLink) *models.APIError {
 	if len(links) == 0 {
 		return nil
@@ -179,35 +269,57 @@ func GetDispatchAssetLinks(t *sql.Tx, dispatch_id string) ([]DispatchAssetLink, 
 	return results, nil
 }
 
-func CreateDispatchAsset(
+func GetDispatchAssets(
 	c *common.Config,
 	t *sql.Tx,
 	dispatch_id string,
-	name string,
-	asset *models.AssetDetails,
-) *models.APIError {
-	// Create an asset with a given name
-	//
-	// TODO: look this up
-	if asset == nil {
-		return nil
-	}
-	key := fmt.Sprintf("%s/%s", dispatch_id, name)
-	reqBody := []models.AssetPublicSchema{
-		{Key: key, AssetDetails: *asset},
-	}
-	_, api_err := CreateAssets(c, t, reqBody)
-	if api_err != nil {
-		return api_err
+) ([]DispatchAssetEntity, *models.APIError) {
+	ents := make([]DispatchAssetEntity, 0)
+	count := 0
+	// Generate template
+	ent := DispatchAssetEntity{}
+	table := db.DISPATCH_ASSET_TABLE
+	filters := Filters{}
+	(&filters).AddEq(strings.Join([]string{db.DISPATCH_TABLE, db.DISPATCH_TABLE_ID}, "."), dispatch_id)
+	sort_key := strings.Join([]string{db.DISPATCH_ASSET_TABLE, db.DISPATCH_ASSET_TABLE_NAME}, ".")
+	limit := 100
+	offset := 0
+	template := generateSelectJoinTemplate(
+		table,
+		(&ent).Fields(),
+		(&ent).Joins(),
+		(&filters).RenderTemplate(),
+		sort_key,
+		true,
+		limit,
+		offset,
+	)
+
+	// Prepare statement and exec query
+	stmt, err := t.Prepare(template)
+	if err != nil {
+		slog.Info(fmt.Sprintf("Error preparing statement: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
 	}
 
-	link := NewDispatchAsset(dispatch_id, key, name)
-	api_err = CreateDispatchAssetLinks(t, []DispatchAssetLink{link})
-	if api_err != nil {
-		return api_err
+	rows, err := stmt.Query((&filters).RenderValues()...)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error executing query: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
 	}
+	for rows.Next() {
+		ent = NewDispatchAssetEntity()
+		err = rows.Scan((&ent).Fieldrefs()...)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error querying row: %s\n", err.Error()))
+			return nil, models.NewGenericServerError(err)
+		}
+		ents = append(ents, ent)
+		count += 1
+	}
+	slog.Debug(fmt.Sprintf("Returning %d electron-asset links\n", count))
 
-	return nil
+	return ents, nil
 }
 
 func GetDispatchAsset(
@@ -345,23 +457,59 @@ func GetElectronAssetLinks(t *sql.Tx, dispatch_id string, node_id int) ([]Electr
 	return results, nil
 }
 
-func CreateElectronAsset(
+// Output: map name -> Asset Record
+func GetElectronAssets(
 	c *common.Config,
 	t *sql.Tx,
 	dispatch_id string,
 	node_id int,
-	name string,
-	asset *models.AssetDetails,
-) *models.APIError {
-	return models.NewNotImplementedError()
-}
+) ([]ElectronAssetEntity, *models.APIError) {
 
-func GetElectronAsset(
-	c *common.Config,
-	t *sql.Tx,
-	dispatch_id string,
-	node_id int,
-	name string,
-) (models.AssetDetails, *models.APIError) {
-	return models.AssetDetails{}, models.NewNotImplementedError()
+	ents := make([]ElectronAssetEntity, 0)
+	count := 0
+	// Generate template
+	ent := ElectronAssetEntity{}
+	table := db.ELECTRON_ASSET_TABLE
+	filters := Filters{}
+	(&filters).AddEq(strings.Join([]string{db.ELECTRON_TABLE, db.ELECTRON_TABLE_DISPATCH_ID}, "."), dispatch_id)
+	(&filters).AddEq(strings.Join([]string{db.ELECTRON_TABLE, db.ELECTRON_TABLE_NODE_ID}, "."), node_id)
+	sort_key := strings.Join([]string{db.ELECTRON_ASSET_TABLE, db.ELECTRON_ASSET_TABLE_NAME}, ".")
+	limit := 100
+	offset := 0
+	template := generateSelectJoinTemplate(
+		table,
+		(&ent).Fields(),
+		(&ent).Joins(),
+		(&filters).RenderTemplate(),
+		sort_key,
+		true,
+		limit,
+		offset,
+	)
+
+	// Prepare statement and exec query
+	stmt, err := t.Prepare(template)
+	if err != nil {
+		slog.Info(fmt.Sprintf("Error preparing statement: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
+	}
+
+	rows, err := stmt.Query((&filters).RenderValues()...)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error executing query: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
+	}
+	for rows.Next() {
+		ent = NewElectronAssetEntity()
+		err = rows.Scan((&ent).Fieldrefs()...)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error querying row: %s\n", err.Error()))
+			return nil, models.NewGenericServerError(err)
+		}
+		ents = append(ents, ent)
+		count += 1
+	}
+	slog.Debug(fmt.Sprintf("Returning %d electron-asset links\n", count))
+
+	return ents, nil
 }
