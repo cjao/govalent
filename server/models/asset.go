@@ -73,7 +73,7 @@ func (r *BulkAssetGetResponse) EncodeJSON(enc *json.Encoder) *APIError {
 
 // Asset links
 type AssetLink struct {
-	Asset AssetPublicSchema
+	Asset AssetDetails
 	Name  string
 }
 

@@ -106,7 +106,7 @@ func getDispatchAssetLinks(c *common.Config, d *sql.DB, dispatch_id string) ([]m
 	}
 	links := make([]models.AssetLink, len(dispatch_assets))
 	for i := range links {
-		links[i].Asset = dispatch_assets[i].Asset.GetPublicEntity(c)
+		links[i].Asset = dispatch_assets[i].Asset.GetPublicEntity(c).AssetDetails
 		links[i].Name = dispatch_assets[i].Name
 	}
 	tx.Rollback()
@@ -142,7 +142,7 @@ func getElectronAssetLinks(c *common.Config, d *sql.DB, dispatch_id string, node
 	}
 	links := make([]models.AssetLink, len(electron_assets))
 	for i := range links {
-		links[i].Asset = electron_assets[i].Asset.GetPublicEntity(c)
+		links[i].Asset = electron_assets[i].Asset.GetPublicEntity(c).AssetDetails
 		links[i].Name = electron_assets[i].Name
 	}
 	tx.Rollback()
