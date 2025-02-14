@@ -64,7 +64,7 @@ func exportAssets(
 	}
 	assets := make([]models.AssetPublicSchema, len(ents))
 	for i, item := range ents {
-		assets[i] = item.GetPublicEntity(c)
+		assets[i] = *item.GetPublicEntity(c)
 	}
 	tx.Rollback()
 	return assets, nil

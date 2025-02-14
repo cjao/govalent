@@ -65,7 +65,7 @@ func exportManifest(c *common.Config, d *sql.DB, dispatch_id string) (*models.Di
 	if db_err != nil {
 		return nil, models.NewGenericServerError(db_err)
 	}
-	manifest, err := crud.ExportManifest(t, dispatch_id)
+	manifest, err := crud.ExportManifest(c, t, dispatch_id)
 
 	// TODO: distinguish between 4xx and 5xx errors
 	if err != nil {

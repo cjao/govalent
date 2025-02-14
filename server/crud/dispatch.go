@@ -165,7 +165,7 @@ func CreateDispatchMetadata(t *sql.Tx, d *models.DispatchMeta, l *models.Lattice
 	return nil
 }
 
-func GetDispatches(t *sql.Tx, dispatch_id string, page int, count int) (models.GetBulkDispatchesResponse, *models.APIError) {
+func GetDispatchSummaries(t *sql.Tx, dispatch_id string, page int, count int) (models.GetBulkDispatchesResponse, *models.APIError) {
 	filters := Filters{}
 	d_meta := make([]models.DispatchMeta, count)
 	l_meta := make([]models.LatticeMeta, count)

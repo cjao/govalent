@@ -13,6 +13,14 @@ type AssetDetails struct {
 	Size      int    `json:"size"`
 }
 
+func (a *AssetDetails) Copy(d *AssetDetails) {
+	a.DigestAlg = d.DigestAlg
+	a.Digest = d.Digest
+	a.Uri = d.Uri
+	a.RemoteUri = d.RemoteUri
+	a.Size = d.Size
+}
+
 type AssetPublicSchema struct {
 	AssetDetails
 	Key string `json:"key"`

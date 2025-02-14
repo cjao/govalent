@@ -3,6 +3,7 @@ package crud
 import (
 	"testing"
 
+	"github.com/casey/govalent/server/common"
 	"github.com/casey/govalent/server/models"
 )
 
@@ -44,6 +45,7 @@ func TestCreateElectron(t *testing.T) {
 }
 
 func TestGetAllElectrons(t *testing.T) {
+	config := common.NewConfigFromEnv()
 	d := newMockDB(t)
 	tx, db_err := d.Begin()
 	if db_err != nil {
@@ -59,7 +61,7 @@ func TestGetAllElectrons(t *testing.T) {
 		}
 	}
 
-	results, err := GetAllElectrons(tx, dispatch.Metadata.DispatchId, false)
+	results, err := GetAllElectrons(&config, tx, dispatch.Metadata.DispatchId, false)
 	if err != nil {
 		t.Fatalf("Error retrieving electrons from dispatch %s: %s", dispatch.Metadata.DispatchId, err.Error())
 	}

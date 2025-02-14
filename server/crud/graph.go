@@ -244,12 +244,12 @@ func CreateGraph(c *common.Config, t *sql.Tx, dispatch_id string, tg *models.Gra
 	return err
 }
 
-func GetGraph(t *sql.Tx, dispatch_id string, load_assets bool) (models.Graph, *models.APIError) {
+func GetGraph(c *common.Config, t *sql.Tx, dispatch_id string, load_assets bool) (models.Graph, *models.APIError) {
 	edges, err := GetAllEdges(t, dispatch_id)
 	if err != nil {
 		return models.Graph{}, err
 	}
-	electrons, err := GetAllElectrons(t, dispatch_id, load_assets)
+	electrons, err := GetAllElectrons(c, t, dispatch_id, load_assets)
 	if err != nil {
 		return models.Graph{}, err
 	}
