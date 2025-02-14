@@ -40,7 +40,7 @@ const (
 	DISPATCH_TABLE_COVALENT_VERSION       = "covalent_version"
 	DISPATCH_TABLE_START_TIME             = "start_time"
 	DISPATCH_TABLE_END_TIME               = "end_time"
-	DISPATCH_TABLE_ID                     = "dispatch_id"
+	DISPATCH_TABLE_ID                     = "id"
 	DISPATCH_TABLE_ROOT_ID                = "root_dispatch_id"
 	ELECTRON_TABLE_ID                     = "id"
 	ELECTRON_TABLE_NODE_ID                = "transport_graph_node_id"

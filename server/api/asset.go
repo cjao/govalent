@@ -70,6 +70,7 @@ func exportAssets(
 	return assets, nil
 }
 
+// GET /assets?prefix=<prefix>
 func handleExportAssets(c *common.Config, d *sql.DB, w http.ResponseWriter, r *http.Request) int {
 	params, api_err := NewPaginationParamsFromReq(r)
 	if api_err != nil {

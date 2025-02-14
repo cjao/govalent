@@ -231,8 +231,8 @@ func getLatticeMetadata(t *sql.Tx, dispatch_id string) (models.LatticeMeta, *mod
 }
 
 func UpdateDispatch(t *sql.Tx, dispatch_id string, status string, start_time string, end_time string) *models.APIError {
-	where := []KeyValue{{Key: "dispatch_id", Value: dispatch_id}}
-	update := []KeyValue{{Key: "status", Value: status}}
+	where := []KeyValue{{Key: db.DISPATCH_TABLE_ID, Value: dispatch_id}}
+	update := []KeyValue{{Key: db.DISPATCH_TABLE_STATUS, Value: status}}
 	if len(start_time) > 0 {
 		update = append(update, KeyValue{Key: "start_time", Value: start_time})
 	}

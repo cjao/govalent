@@ -1,7 +1,6 @@
 import httpx
 import json
 import uuid
-import pprint
 import pytest
 import tempfile
 import uuid
@@ -34,11 +33,8 @@ def mock_manifest():
 def test_submit_manifest(mock_manifest):
 
     stripped = strip_local_uris(mock_manifest)
-    pprint.pp(json.loads(stripped.model_dump_json()))
-    print("")
     resp = httpx.post(f"{DISPATCHER_ADDR}/dispatches", data=stripped.model_dump_json())
     body = resp.json()
-    pprint.pp(body)
     resp.raise_for_status()
 
     # Check that the response body has right structure
@@ -106,8 +102,6 @@ def test_submit_manifest(mock_manifest):
 def test_export_manifest(mock_manifest):
 
     stripped = strip_local_uris(mock_manifest)
-    pprint.pp(json.loads(stripped.model_dump_json()))
-    print("")
     resp = httpx.post(f"{DISPATCHER_ADDR}/dispatches", data=stripped.model_dump_json())
     resp.raise_for_status()
     body = resp.json()
@@ -116,7 +110,6 @@ def test_export_manifest(mock_manifest):
     dispatch_id = returned_manifest.metadata.dispatch_id
     resp = httpx.get(f"{DISPATCHER_ADDR}/dispatches/{dispatch_id}")
     body = resp.json()
-    pprint.pp(body)
     resp.raise_for_status()
     exported_manifest = ResultSchema.model_validate(body)
 
@@ -175,8 +168,6 @@ def test_export_manifest(mock_manifest):
 
 def test_bulk_get_dispatches(mock_manifest):
     stripped = strip_local_uris(mock_manifest)
-    pprint.pp(json.loads(stripped.model_dump_json()))
-    print("")
     resp = httpx.post(f"{DISPATCHER_ADDR}/dispatches", data=stripped.model_dump_json())
     resp.raise_for_status()
     body = resp.json()
@@ -191,7 +182,6 @@ def test_bulk_get_dispatches(mock_manifest):
 
 def test_delete_dispatch(mock_manifest):
     stripped = strip_local_uris(mock_manifest)
-    pprint.pp(json.loads(stripped.model_dump_json()))
     print("")
     resp = httpx.post(f"{DISPATCHER_ADDR}/dispatches", data=stripped.model_dump_json())
     resp.raise_for_status()
@@ -232,3 +222,49 @@ def test_create_get_assets():
     assert body["assets"][1]["key"] == reqBody["assets"][1]["key"]
     assert body["assets"][1]["size"] == reqBody["assets"][1]["size"]
     assert len(body["assets"][1]["remote_uri"]) > 0
+
+
+def test_get_asset_links(mock_manifest):
+    stripped = strip_local_uris(mock_manifest)
+    resp = httpx.post(f"{DISPATCHER_ADDR}/dispatches", data=stripped.model_dump_json())
+    resp.raise_for_status()
+    body = resp.json()
+    returned_manifest = ResultSchema.model_validate(body)
+
+    dispatch_id = returned_manifest.metadata.dispatch_id
+
+    print("DEBUG Workflow assets:")
+    print(list(map(lambda x: x[0], returned_manifest.assets)))
+    print(list(map(lambda x: x[0], returned_manifest.lattice.assets)))
+    num_workflow_assets = sum(map(lambda x: 1, returned_manifest.assets)) + sum(map(lambda x: 1, returned_manifest.lattice.assets))
+    num_electron_assets = sum(map(lambda x: 1, returned_manifest.lattice.transport_graph.nodes[0].assets))
+
+
+    workflow_assets_url = f"{DISPATCHER_ADDR}/dispatches/{dispatch_id}/assets"
+    resp = httpx.get(workflow_assets_url)
+    resp.raise_for_status()
+    body = resp.json()
+    workflow_asset_map = {x["Name"]: x["Asset"] for x in body["Records"]}
+    print(workflow_asset_map)
+    for name, _ in returned_manifest.assets:
+        # Skip deprecated fields
+        assert name in workflow_asset_map
+    for name, _ in returned_manifest.lattice.assets:
+        if name.startswith("named_") or name.endswith("_imports"):
+            continue
+        if name == "_custom":
+            continue
+        assert name in workflow_asset_map
+
+    electron_assets_url = f"{DISPATCHER_ADDR}/dispatches/{dispatch_id}/electrons/0/assets"
+    resp = httpx.get(electron_assets_url)
+    resp.raise_for_status()
+    body = resp.json()
+    electron_asset_map = {x["Name"]: x["Asset"] for x in body["Records"]}
+    for name, _ in returned_manifest.lattice.transport_graph.nodes[0].assets:
+        # Skip deprecated fields
+        if name == "_custom":
+            continue
+        if name == "qelectron_db":
+            continue
+        assert name in electron_asset_map
