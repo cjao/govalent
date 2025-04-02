@@ -130,6 +130,29 @@ def test_export_manifest(mock_manifest):
     submitted_assets = mock_manifest.assets
     assert exported_assets.model_dump().keys() == submitted_assets.model_dump().keys()
 
+    # Check sizes and digests
+    for name, asset in submitted_assets:
+        assert asset.size == exported_assets.__dict__[name].size
+        if asset.size > 0:
+            assert asset.digest == exported_assets.__dict__[name].digest
+
+    # Check that remote_uri is populated iff asset size > 0
+    for _, asset in exported_assets:
+        if asset.size > 0:
+            assert len(asset.remote_uri) > 0
+        if asset.size == 0:
+            assert len(asset.remote_uri) == 0
+
+    exported_assets = exported_manifest.lattice.assets
+    submitted_assets = mock_manifest.lattice.assets
+
+    # Check sizes and digests
+    for name, asset in submitted_assets:
+        exported = exported_assets.model_dump()[name]
+        assert asset.size == exported_assets.__dict__[name].size
+        if asset.size > 0:
+            assert asset.digest == exported_assets.__dict__[name].digest
+
     # Check that remote_uri is populated iff asset size > 0
     for _, asset in exported_assets:
         if asset.size > 0:
@@ -155,8 +178,8 @@ def test_export_manifest(mock_manifest):
             if not asset:
                 continue
             assert asset.size == submitted_node.assets.__dict__[name].size
-            assert asset.digest == submitted_node.assets.__dict__[name].digest
             if asset.size > 0:
+                assert asset.digest == submitted_node.assets.__dict__[name].digest
                 assert len(asset.remote_uri) > 0
             if asset.size == 0:
                 assert len(asset.remote_uri) == 0
