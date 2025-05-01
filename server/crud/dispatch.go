@@ -165,7 +165,7 @@ func CreateDispatchMetadata(t *sql.Tx, d *models.DispatchMeta, l *models.Lattice
 	return nil
 }
 
-func GetDispatches(t *sql.Tx, dispatch_id string, page int, count int) (models.GetBulkDispatchesResponse, *models.APIError) {
+func GetDispatchSummaries(t *sql.Tx, dispatch_id string, page int, count int) (models.GetBulkDispatchesResponse, *models.APIError) {
 	filters := Filters{}
 	d_meta := make([]models.DispatchMeta, count)
 	l_meta := make([]models.LatticeMeta, count)
@@ -230,9 +230,45 @@ func getLatticeMetadata(t *sql.Tx, dispatch_id string) (models.LatticeMeta, *mod
 
 }
 
+func GetDispatch(c *common.Config, t *sql.Tx, dispatch_id string, load_assets bool) (models.DispatchSchema, *models.APIError) {
+	d := models.DispatchSchema{}
+	ent, err := getDispatchEntity(t, dispatch_id)
+	if err != nil {
+		return models.DispatchSchema{}, err
+	}
+	asset_links, err := GetDispatchAssets(c, t, dispatch_id)
+	if err != nil {
+		return models.DispatchSchema{}, err
+	}
+	assets_details_by_name := make(map[string]*models.AssetPublicSchema)
+	for _, row := range asset_links {
+		assets_details_by_name[row.Name] = (&row.Asset).GetPublicEntity(c)
+	}
+
+	// Runtime generated assets
+	asset_refs_by_name := (&d.Assets).AttrsByName()
+	for name, details_ref := range asset_refs_by_name {
+		if a, ok := assets_details_by_name[name]; ok {
+			details_ref.Copy(&a.AssetDetails)
+		}
+	}
+	// Static assets
+	asset_refs_by_name = (&d.Lattice.Assets).AttrsByName()
+	for name, details_ref := range asset_refs_by_name {
+		if a, ok := assets_details_by_name[name]; ok {
+			details_ref.Copy(&a.AssetDetails)
+		}
+	}
+
+	d.Metadata = *ent.d
+	d.Lattice.Metadata = *ent.l
+
+	return d, nil
+}
+
 func UpdateDispatch(t *sql.Tx, dispatch_id string, status string, start_time string, end_time string) *models.APIError {
-	where := []KeyValue{{Key: "dispatch_id", Value: dispatch_id}}
-	update := []KeyValue{{Key: "status", Value: status}}
+	where := []KeyValue{{Key: db.DISPATCH_TABLE_ID, Value: dispatch_id}}
+	update := []KeyValue{{Key: db.DISPATCH_TABLE_STATUS, Value: status}}
 	if len(start_time) > 0 {
 		update = append(update, KeyValue{Key: "start_time", Value: start_time})
 	}

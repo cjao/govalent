@@ -39,18 +39,21 @@ type GovalentAPIServer struct {
 	Srv      *http.Server
 	mux      *http.ServeMux
 	patterns []string
+	config   *common.Config
 }
 
-func NewGovalentAPIServer(addr string) *GovalentAPIServer {
+func NewGovalentAPIServer(c *common.Config, addr string) *GovalentAPIServer {
 	mux := http.NewServeMux()
 	return &GovalentAPIServer{
 		Srv:      &http.Server{Addr: addr, Handler: mux},
 		mux:      mux,
 		patterns: make([]string, 0),
+		config:   c,
 	}
 }
 
-func (m *GovalentAPIServer) AddRoute(pattern string, handler RequestHandler) {
+func (m *GovalentAPIServer) AddRoute(verb string, path string, handler RequestHandler) {
+	pattern := fmt.Sprintf("%s %s%s", verb, m.config.APIPrefix, path)
 	m.mux.Handle(pattern, handler)
 	m.patterns = append(m.patterns, pattern)
 	// TODO: add instrospection route
@@ -178,6 +181,11 @@ func (m *GovalentAPIServer) AddRoutes(c *common.Config, d *sql.DB) {
 		dbPool:      d,
 		handlerFunc: handleExportManifest,
 	}
+	get_dispatch_asset_links_handler := RequestHandler{
+		config:      c,
+		dbPool:      d,
+		handlerFunc: handleGetDispatchAssetLinks,
+	}
 	create_assets_handler := RequestHandler{
 		config:      c,
 		dbPool:      d,
@@ -189,14 +197,23 @@ func (m *GovalentAPIServer) AddRoutes(c *common.Config, d *sql.DB) {
 		handlerFunc: handleExportAssets,
 	}
 
-	m.AddRoute("GET /config", dump_config_handler)
-	m.AddRoute("POST /dispatches", create_dispatch_handler)
-	m.AddRoute("GET /dispatches", bulk_get_dispatches_handler)
-	m.AddRoute("DELETE /dispatches/{dispatch_id}", delete_dispatch_handler)
-	m.AddRoute("GET /dispatches/{dispatch_id}", export_manifest_handler)
+	get_electron_asset_links_handler := RequestHandler{
+		config:      c,
+		dbPool:      d,
+		handlerFunc: handleGetElectronAssetLinks,
+	}
 
-	m.AddRoute("POST /assets", create_assets_handler)
-	m.AddRoute("GET /assets", export_assets_handler)
+	m.AddRoute("GET", "/config", dump_config_handler)
+	m.AddRoute("POST", "/dispatches", create_dispatch_handler)
+	m.AddRoute("GET", "/dispatches", bulk_get_dispatches_handler)
+	m.AddRoute("DELETE", "/dispatches/{dispatch_id}", delete_dispatch_handler)
+	m.AddRoute("GET", "/dispatches/{dispatch_id}", export_manifest_handler)
+	m.AddRoute("GET", "/dispatches/{dispatch_id}/assets", get_dispatch_asset_links_handler)
+
+	m.AddRoute("GET", "/dispatches/{dispatch_id}/electrons/{node_id}/assets", get_electron_asset_links_handler)
+
+	m.AddRoute("POST", "/assets", create_assets_handler)
+	m.AddRoute("GET", "/assets", export_assets_handler)
 
 	// TODO: add introspection route
 	m.mux.Handle("GET /introspection", m)

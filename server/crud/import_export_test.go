@@ -31,7 +31,7 @@ func TestImportExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error importing manifest: %v", err)
 	}
-	export, err := ExportManifest(tx, dispatch.Metadata.DispatchId)
+	export, err := ExportManifest(&config, tx, dispatch.Metadata.DispatchId)
 	if err != nil {
 		t.Fatalf("Error exporting manifest: %v", err)
 	}

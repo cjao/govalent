@@ -13,7 +13,7 @@ import (
 
 const dispatchesDDL = `
 CREATE TABLE IF NOT EXISTS dispatches (
-    dispatch_id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     root_dispatch_id TEXT,
     name TEXT NOT NULL,
     status TEXT NOT NULL,

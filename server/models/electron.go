@@ -8,7 +8,7 @@ import (
 type ElectronMeta struct {
 	TaskGroupId      int            `json:"task_group_id"`
 	Name             string         `json:"name"`
-	SubdispatchId    string         `json:"sub_dispatch_id,omitempty"`
+	SubdispatchId    *string        `json:"sub_dispatch_id,omitempty"`
 	Executor         string         `json:"executor"`
 	ExecutorData     string         `json:"-"`
 	ExecutorDataJSON map[string]any `json:"executor_data"`

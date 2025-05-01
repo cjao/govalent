@@ -214,8 +214,10 @@ func getAllElectronMeta(t *sql.Tx, dispatch_id string) ([]models.ElectronMeta, *
 	return results, nil
 }
 
-func GetAllElectrons(t *sql.Tx, dispatch_id string, load_assets bool) ([]models.ElectronSchema, *models.APIError) {
+func GetAllElectrons(c *common.Config, t *sql.Tx, dispatch_id string, load_assets bool) ([]models.ElectronSchema, *models.APIError) {
 	// TODO: load assets
+	//
+	// These will be sorted by node_id
 	meta_list, err := getAllElectronMeta(t, dispatch_id)
 	if err != nil {
 		return []models.ElectronSchema{}, err
@@ -224,7 +226,28 @@ func GetAllElectrons(t *sql.Tx, dispatch_id string, load_assets bool) ([]models.
 	for i, item := range meta_list {
 		electrons[i].NodeId = i
 		electrons[i].Metadata = item
+
+		// TODO: condition this on load_assets
+		asset_entities, err := GetElectronAssets(c, t, dispatch_id, i)
+		if err != nil {
+			return nil, err
+		}
+		asset_refs_by_name := (&electrons[i].Assets).AttrsByName()
+		asset_details_by_name := make(map[string]*models.AssetPublicSchema)
+		// convert [{name, AssetEntity}] into map {name -> AssetEntity}
+		for _, row := range asset_entities {
+			asset_details_by_name[row.Name] = (&row.Asset).GetPublicEntity(c)
+		}
+
+		// Populate ElectronAssets
+		for name, details_ref := range asset_refs_by_name {
+			a, ok := asset_details_by_name[name]
+			if ok {
+				details_ref.Copy(&a.AssetDetails)
+			}
+		}
 	}
+	// retrieve assets
 	return electrons, nil
 }
 

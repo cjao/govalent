@@ -13,6 +13,14 @@ type AssetDetails struct {
 	Size      int    `json:"size"`
 }
 
+func (a *AssetDetails) Copy(d *AssetDetails) {
+	a.DigestAlg = d.DigestAlg
+	a.Digest = d.Digest
+	a.Uri = d.Uri
+	a.RemoteUri = d.RemoteUri
+	a.Size = d.Size
+}
+
 type AssetPublicSchema struct {
 	AssetDetails
 	Key string `json:"key"`
@@ -64,6 +72,24 @@ type BulkAssetGetResponse struct {
 }
 
 func (r *BulkAssetGetResponse) EncodeJSON(enc *json.Encoder) *APIError {
+	json_err := enc.Encode(r)
+	if json_err != nil {
+		return NewGenericServerError(json_err)
+	}
+	return nil
+}
+
+// Asset links
+type AssetLink struct {
+	Asset AssetDetails
+	Name  string
+}
+
+type AssetLinksResponse struct {
+	Records []AssetLink
+}
+
+func (r *AssetLinksResponse) EncodeJSON(enc *json.Encoder) *APIError {
 	json_err := enc.Encode(r)
 	if json_err != nil {
 		return NewGenericServerError(json_err)

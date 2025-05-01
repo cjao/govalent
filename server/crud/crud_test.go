@@ -139,7 +139,7 @@ func TestBulkGetDispatches(t *testing.T) {
 	}
 
 	// Try retrieving a specific dispatch id
-	dispatches, err := GetDispatches(tx, dispatch_1.Metadata.DispatchId, 0, 1)
+	dispatches, err := GetDispatchSummaries(tx, dispatch_1.Metadata.DispatchId, 0, 1)
 	if err != nil {
 		t.Fatalf("Error retrieving dispatches: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestBulkGetDispatches(t *testing.T) {
 
 	// Try retrieving both
 	//
-	dispatches, err = GetDispatches(tx, "", 0, 10)
+	dispatches, err = GetDispatchSummaries(tx, "", 0, 10)
 	if err != nil {
 		t.Fatalf("Error retrieving dispatches: %v", err)
 	}

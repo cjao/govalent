@@ -27,6 +27,7 @@ type Config struct {
 	Dsn         string     `json:"dsn"`
 	StoragePath string     `json:"storage_path"`
 	LogLevel    slog.Level `json:"log_level"`
+	APIPrefix   string     `json:"api_prefix"`
 }
 
 func defaultStoragePath() string {
@@ -48,6 +49,7 @@ func newDefaultConfig() Config {
 		Dsn:         DEFAULT_DSN,
 		StoragePath: defaultStoragePath(),
 		LogLevel:    slog.LevelInfo,
+		APIPrefix:   "",
 	}
 }
 
@@ -81,6 +83,10 @@ func NewConfigFromEnv() Config {
 			os.Exit(1)
 		}
 		c.LogLevel = level
+	}
+	api_prefix := os.Getenv("GOVALENT_API_PREFIX")
+	if len(api_prefix) > 0 {
+		c.APIPrefix = api_prefix
 	}
 	return c
 }

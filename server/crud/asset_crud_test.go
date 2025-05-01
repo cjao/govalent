@@ -46,7 +46,7 @@ func TestCreateAssets(t *testing.T) {
 	}
 }
 
-func TestCreateDispatchAssetLinks(t *testing.T) {
+func TestCreateGetDispatchAssetLinks(t *testing.T) {
 
 	config := common.NewConfigFromEnv()
 	d := newMockDB(t)
@@ -76,7 +76,7 @@ func TestCreateDispatchAssetLinks(t *testing.T) {
 	tx.Rollback()
 }
 
-func TestCreateDispatchAssets(t *testing.T) {
+func TestGetDispatchAssets(t *testing.T) {
 	config := common.NewConfigFromEnv()
 	d := newMockDB(t)
 	tx, db_err := d.Begin()
@@ -89,31 +89,18 @@ func TestCreateDispatchAssets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
-	asset_details := models.AssetDetails{
-		Size:      42,
-		DigestAlg: "md5",
-		Digest:    "digest",
-	}
-	name := "test-asset"
-	api_err := CreateDispatchAsset(&config, tx, dispatch.Metadata.DispatchId, name, &asset_details)
-	if api_err != nil {
-		t.Fatalf("Error creating dispatch asset: %s", api_err.Error())
-	}
-	ent, api_err := GetDispatchAsset(&config, tx, dispatch.Metadata.DispatchId, name)
-	if api_err != nil {
-		t.Fatalf("Error retrieving dispatch asset: %s", api_err.Error())
-	}
-	if ent.public.Size != asset_details.Size {
-		t.Fatalf("Expected asset size %d, got actual size %d", asset_details.Size, ent.public.Size)
-	}
-	if ent.public.Digest != asset_details.Digest {
-		t.Fatalf("Expected asset digest %s, got actual digest %s", asset_details.Digest, ent.public.Digest)
-	}
 
+	records, err := GetDispatchAssets(&config, tx, dispatch.Metadata.DispatchId)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if len(records) != 7 {
+		t.Fatalf("Expected %d records, got %d records", 7, len(records))
+	}
 	tx.Rollback()
 }
 
-func TestCreateElectronAssetLinks(t *testing.T) {
+func TestCreateGetElectronAssetLinks(t *testing.T) {
 	config := common.NewConfigFromEnv()
 	d := newMockDB(t)
 	// asset_body_1 := newMockAsset(
@@ -137,12 +124,47 @@ func TestCreateElectronAssetLinks(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	links, err := getElectronAssetLinks(tx, dispatch.Metadata.DispatchId, electron.NodeId)
+	links, err := GetElectronAssetLinks(tx, dispatch.Metadata.DispatchId, electron.NodeId)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 	if len(links) != 8 {
 		t.Fatalf("Expected %d electron-asset links; got %d links", 8, len(links))
+	}
+
+	tx.Rollback()
+}
+
+func TestGetElectronAssets(t *testing.T) {
+	config := common.NewConfigFromEnv()
+	d := newMockDB(t)
+	// asset_body_1 := newMockAsset(
+	// 	"/dispatch-id/node_0/function.tobj",
+	// 	5,
+	// )
+	// asset_body_2 := newMockAsset(
+	// 	"/dispatch-id/node_0/result.tobj",
+	// 	5,
+	// )
+	tx, db_err := d.Begin()
+	if db_err != nil {
+		t.Fatalf("Error starting transaction: %v", db_err)
+	}
+	// CreateAssets(&config, tx, []models.AssetPublicSchema{asset_body_1, asset_body_2})
+
+	electron := newMockElectron(0, newMockElectronMeta(0, "NEW_OBJECT"), models.ElectronAssets{})
+	dispatch := newMockDispatch([]models.ElectronSchema{electron}, nil)
+	err := ImportManifest(&config, tx, &dispatch)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	assets, err := GetElectronAssets(&config, tx, dispatch.Metadata.DispatchId, electron.NodeId)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if len(assets) != 8 {
+		t.Fatalf("Expected %d electron-asset links; got %d assets", 8, len(assets))
 	}
 
 	tx.Rollback()

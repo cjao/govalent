@@ -36,7 +36,7 @@ func main() {
 		slog.Error(fmt.Sprint("Failed initialize db: ", err.Error()))
 	}
 	slog.Info(fmt.Sprint("Initialized DB at ", c.Dsn))
-	s := api.NewGovalentAPIServer(fmt.Sprintf(":%d", c.Port))
+	s := api.NewGovalentAPIServer(&c, fmt.Sprintf(":%d", c.Port))
 	s.AddRoutes(&c, pool)
 	srv_err := s.Srv.ListenAndServe()
 	slog.Error(srv_err.Error())

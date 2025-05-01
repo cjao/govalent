@@ -105,11 +105,12 @@ func (a *AssetEntity) GetPublicUri(c *common.Config) string {
 }
 
 // For use by GET endpoint
-func (a *AssetEntity) GetPublicEntity(c *common.Config) models.AssetPublicSchema {
+// This mutates a
+func (a *AssetEntity) GetPublicEntity(c *common.Config) *models.AssetPublicSchema {
 	if a.public.Size > 0 {
 		a.public.RemoteUri = a.GetPublicUri(c)
 	}
-	return *a.public
+	return a.public
 }
 
 // Register assets and populate each manifest's RemoteURI with the asset's

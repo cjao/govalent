@@ -37,7 +37,7 @@ func TestCreateGraph(t *testing.T) {
 		t.Fatalf("Error creating dispatch record: %v", err)
 	}
 
-	electrons_new, err := GetAllElectrons(tx, dispatch.Metadata.DispatchId, false)
+	electrons_new, err := GetAllElectrons(&config, tx, dispatch.Metadata.DispatchId, false)
 	if len(electrons_new) != 3 {
 		t.Fatalf("Expected %d electrons, actual %d electrons", 3, len(electrons_new))
 	}
