@@ -43,6 +43,9 @@ func TestCreateGraph(t *testing.T) {
 	}
 
 	edges_new, err := GetAllEdges(tx, dispatch.Metadata.DispatchId)
+	if err != nil {
+		t.Fatalf("Error retrieving edges: %s", err.Error())
+	}
 	if len(edges_new) != 2 {
 		t.Fatalf("Expected %d edges, actual %d edges", 2, len(edges_new))
 	}

@@ -105,7 +105,9 @@ func createDispatchAssets(c *common.Config, t *sql.Tx, m *models.DispatchSchema)
 		attrs_by_key[key] = attrs[name]
 		asset_schemas[count].Key = key
 		asset_schemas[count].AssetDetails = *details
-		dispatch_links[count].init(dispatch_id, asset_schemas[count].Key, name)
+		dispatch_links[count].dispatch_id = dispatch_id
+		dispatch_links[count].AssetId = ComputeAssetId(key)
+		dispatch_links[count].Name = name
 		count += 1
 	}
 
@@ -136,7 +138,9 @@ func createDispatchAssets(c *common.Config, t *sql.Tx, m *models.DispatchSchema)
 		attrs_by_key[key] = attrs[name]
 		asset_schemas[count].Key = key
 		asset_schemas[count].AssetDetails = *details
-		dispatch_links[count].init(dispatch_id, asset_schemas[count].Key, name)
+		dispatch_links[count].dispatch_id = dispatch_id
+		dispatch_links[count].AssetId = ComputeAssetId(key)
+		dispatch_links[count].Name = name
 		count += 1
 	}
 	ents, api_err = CreateAssets(c, t, asset_schemas)

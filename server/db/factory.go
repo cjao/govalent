@@ -47,14 +47,18 @@ CREATE TABLE IF NOT EXISTS electrons (
     end_time DATETIME,
     job_id TEXT,
     sort_order INTEGER
-)
+);
+CREATE INDEX IF NOT EXISTS electrons_index ON electrons (
+	parent_dispatch_id, transport_graph_node_id
+);
 `
 
 const edgesDDL = `
 CREATE TABLE IF NOT EXISTS edges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    child_electron_id INTEGER NOT NULL REFERENCES electrons(id) ON DELETE CASCADE,
-    parent_electron_id INTEGER NOT NULL REFERENCES electrons(id) ON DELETE CASCADE,
+    dispatch_id TEXT NOT NULL REFERENCES dispatches(id) ON DELETE CASCADE,
+    child_node_id INTEGER NOT NULL,
+    parent_node_id INTEGER NOT NULL,
     edge_name TEXT NOT NULL,
     param_type TEXT NOT NULL,
     arg_index INTEGER
@@ -76,20 +80,27 @@ CREATE TABLE IF NOT EXISTS assets (
 
 const electronAssetsDDL = `
 CREATE TABLE IF NOT EXISTS electronassets (
-	id TEXT PRIMARY KEY,
-	meta_id INTEGER REFERENCES electrons(id) ON DELETE CASCADE NOT NULL,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	dispatch_id TEXT REFERENCES dispatches(id) ON DELETE CASCADE NOT NULL,
+	transport_graph_node_id TEXT NOT NULL,
 	asset_id TEXT REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
 	name TEXT NOT NULL
-)
+);
+CREATE INDEX IF NOT EXISTS electronassets_index ON electronassets (
+	dispatch_id, transport_graph_node_id
+);
 `
 
 const dispatchAssetsDDL = `
 CREATE TABLE IF NOT EXISTS dispatchassets (
-	id TEXT PRIMARY KEY,
-	meta_id TEXT REFERENCES dispatches(id) ON DELETE CASCADE NOT NULL,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	dispatch_id TEXT REFERENCES dispatches(id) ON DELETE CASCADE NOT NULL,
 	asset_id TEXT REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
 	name TEXT NOT NULL
-)
+);
+CREATE INDEX IF NOT EXISTS dispatchassets_index ON dispatchassets (
+	dispatch_id
+);
 `
 
 func GetDB(c *common.Config) (*sql.DB, error) {

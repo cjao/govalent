@@ -9,15 +9,13 @@ import (
 
 // Graph manipulation
 const exportEdgesSQL string = `SELECT
-	A.transport_graph_node_id AS source,
-	B.transport_graph_node_id AS target,
-	edges.edge_name,
-	edges.param_type,
-	edges.arg_index
-	FROM electrons as A
-	JOIN electrons as B
-	JOIN edges ON A.id = edges.parent_electron_id AND B.id = edges.child_electron_id
-	WHERE A.parent_dispatch_id = B.parent_dispatch_id AND A.parent_dispatch_id = ?
+	parent_node_id AS source,
+	child_node_id AS target,
+	edge_name,
+	param_type,
+	arg_index
+	FROM edges
+	WHERE dispatch_id = ?
 	ORDER BY target, source
 `
 

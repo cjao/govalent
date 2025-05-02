@@ -119,7 +119,6 @@ func createElectronAssets(
 	t *sql.Tx,
 	dispatch_id string,
 	e *models.ElectronSchema,
-	nodeid_eid_map map[int]int,
 ) *models.APIError {
 	attrs := e.Assets.AttrsByName()
 	asset_schemas := make([]models.AssetPublicSchema, len(attrs))
@@ -131,7 +130,10 @@ func createElectronAssets(
 		attrs_by_key[key] = attrs[name]
 		asset_schemas[count].Key = key
 		asset_schemas[count].AssetDetails = *details
-		asset_links[count].init(nodeid_eid_map[e.NodeId], asset_schemas[count].Key, name)
+		asset_links[count].dispatch_id = dispatch_id
+		asset_links[count].node_id = e.NodeId
+		asset_links[count].AssetId = ComputeAssetId(key)
+		asset_links[count].Name = name
 		count += 1
 	}
 

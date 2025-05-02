@@ -11,6 +11,7 @@ import (
 )
 
 var EDGE_ENTITY_KEYS = []string{
+	db.EDGES_TABLE_DISPATCH,
 	db.EDGES_TABLE_CHILD,
 	db.EDGES_TABLE_PARENT,
 	db.EDGES_TABLE_TYPE,
@@ -19,13 +20,12 @@ var EDGE_ENTITY_KEYS = []string{
 }
 
 type EdgeEntity struct {
-	e         *models.Edge
-	target_id int
-	source_id int
+	dispatch_id string
+	e           *models.Edge
 }
 
-func newEdgeEntity(e *models.Edge) EdgeEntity {
-	return EdgeEntity{e: e}
+func newEdgeEntity(dispatch_id string, e *models.Edge) EdgeEntity {
+	return EdgeEntity{dispatch_id: dispatch_id, e: e}
 }
 
 func (e *EdgeEntity) Fields() []string {
@@ -34,8 +34,9 @@ func (e *EdgeEntity) Fields() []string {
 
 func (e *EdgeEntity) Values() []any {
 	return []any{
-		e.target_id,
-		e.source_id,
+		e.dispatch_id,
+		e.e.Target,
+		e.e.Source,
 		e.e.Metadata.ParamType,
 		e.e.Metadata.Name,
 		e.e.Metadata.ArgIndex,
@@ -44,8 +45,9 @@ func (e *EdgeEntity) Values() []any {
 
 func (e *EdgeEntity) Fieldrefs() []any {
 	return []any{
-		&e.target_id,
-		&e.source_id,
+		&e.dispatch_id,
+		&e.e.Target,
+		&e.e.Source,
 		&e.e.Metadata.ParamType,
 		&e.e.Metadata.Name,
 		&e.e.Metadata.ArgIndex,
@@ -150,16 +152,14 @@ func (gv *GraphView) sortTopologically() ([]int, *models.APIError) {
 	return sorted_nodes, nil
 }
 
-func createEdges(t *sql.Tx, dispatch_id string, edges []models.Edge, node_id_map map[int]int) (int, *models.APIError) {
+func createEdges(t *sql.Tx, dispatch_id string, edges []models.Edge) (int, *models.APIError) {
 	if len(edges) == 0 {
 		return 0, nil
 	}
 	ents := make([]EdgeEntity, len(edges))
 	for i := 0; i < len(edges); i++ {
+		ents[i].dispatch_id = dispatch_id
 		ents[i].e = &edges[i]
-		ents[i].target_id = node_id_map[ents[i].e.Target]
-		ents[i].source_id = node_id_map[ents[i].e.Source]
-
 	}
 	template, _ := generateInsertTemplate(db.EDGES_TABLE, ents[0].Fields())
 	slog.Debug(fmt.Sprintf("Insert template: %s\n", template))
@@ -222,21 +222,15 @@ func CreateGraph(c *common.Config, t *sql.Tx, dispatch_id string, tg *models.Gra
 			return err
 		}
 	}
-	// TODO: insert assets
-	nodeid_eid_map, err := getNodeIdEidMap(t, dispatch_id, false)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error inserting compute graph: %s", err.Error()))
-		return err
-	}
 	for i := range tg.Nodes {
-		err = createElectronAssets(c, t, dispatch_id, &tg.Nodes[i], nodeid_eid_map)
+		err := createElectronAssets(c, t, dispatch_id, &tg.Nodes[i])
 		if err != nil {
 			slog.Error(fmt.Sprintf("Error creating electron assets: %s", err.Error()))
 			return err
 		}
 	}
 
-	_, err = createEdges(t, dispatch_id, tg.Links, nodeid_eid_map)
+	_, err := createEdges(t, dispatch_id, tg.Links)
 	if err != nil {
 		slog.Info(fmt.Sprintf("Error creating edges: %s", err.Error()))
 		return err
@@ -280,12 +274,12 @@ func GetAllEdges(t *sql.Tx, dispatch_id string) ([]models.Edge, *models.APIError
 		edges = append(edges, e)
 	}
 
-	// Map internal electron id to node id
-	eid_nodeid_map, err := getNodeIdEidMap(t, dispatch_id, true)
-	for _, e := range edges {
-		e.Source = eid_nodeid_map[e.Source]
-		e.Target = eid_nodeid_map[e.Target]
-	}
+	// // Map internal electron id to node id
+	// eid_nodeid_map, err := getNodeIdEidMap(t, dispatch_id, true)
+	// for _, e := range edges {
+	// 	e.Source = eid_nodeid_map[e.Source]
+	// 	e.Target = eid_nodeid_map[e.Target]
+	// }
 
 	return edges, nil
 }
