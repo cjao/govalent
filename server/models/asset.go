@@ -21,6 +21,7 @@ func (a *AssetDetails) Copy(d *AssetDetails) {
 	a.Size = d.Size
 }
 
+// Client facing objects for asset crud endpoints
 type AssetPublicSchema struct {
 	AssetDetails
 	Key string `json:"key"`
@@ -79,7 +80,7 @@ func (r *BulkAssetGetResponse) EncodeJSON(enc *json.Encoder) *APIError {
 	return nil
 }
 
-// Asset links
+// Client facing objects for workflow asset CRUD (assets linked with an electron or dispatch)
 type AssetLink struct {
 	Asset AssetDetails
 	Name  string

@@ -130,7 +130,7 @@ func handleGetDispatchAssetLinks(c *common.Config, d *sql.DB, w http.ResponseWri
 	return writeJSONResponse(w, &respBody)
 }
 
-func getElectronAssetLinks(c *common.Config, d *sql.DB, dispatch_id string, node_id int) ([]models.AssetLink, *models.APIError) {
+func getAssetLinks(c *common.Config, d *sql.DB, dispatch_id string, node_id int) ([]models.AssetLink, *models.APIError) {
 	tx, db_err := d.Begin()
 	if db_err != nil {
 		return nil, models.NewGenericServerError(db_err)
@@ -162,7 +162,7 @@ func handleGetElectronAssetLinks(c *common.Config, d *sql.DB, w http.ResponseWri
 		models.WriteError(w, err)
 		return err.StatusCode
 	}
-	links, err := getElectronAssetLinks(c, d, dispatch_id, node_id)
+	links, err := getAssetLinks(c, d, dispatch_id, node_id)
 	if err != nil {
 		models.WriteError(w, err)
 		return err.StatusCode

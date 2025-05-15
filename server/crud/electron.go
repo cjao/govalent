@@ -122,17 +122,18 @@ func createElectronAssets(
 ) *models.APIError {
 	attrs := e.Assets.AttrsByName()
 	asset_schemas := make([]models.AssetPublicSchema, len(attrs))
-	asset_links := make([]ElectronAssetLink, len(attrs))
+	asset_links := make([]AssetLink, len(attrs))
 	count := 0
+	key_count_map := make(map[string]int)
 	attrs_by_key := make(map[string]*models.AssetDetails)
 	for name, details := range attrs {
 		key := fmt.Sprintf("%s/node_%d/%s", dispatch_id, e.NodeId, name)
+		key_count_map[key] = count
 		attrs_by_key[key] = attrs[name]
 		asset_schemas[count].Key = key
 		asset_schemas[count].AssetDetails = *details
 		asset_links[count].dispatch_id = dispatch_id
 		asset_links[count].node_id = e.NodeId
-		asset_links[count].AssetId = ComputeAssetId(key)
 		asset_links[count].Name = name
 		count += 1
 	}
@@ -146,9 +147,13 @@ func createElectronAssets(
 
 	for _, ent := range ents {
 		attrs_by_key[ent.public.Key].RemoteUri = ent.public.RemoteUri
+		c := key_count_map[ent.public.Key]
+
+		// Auto-incremented primary key
+		asset_links[c].asset_id = ent.id
 	}
 
-	api_err = CreateElectronAssetLinks(t, asset_links)
+	api_err = createAssetLinks(t, asset_links)
 	if api_err != nil {
 		return api_err
 	}

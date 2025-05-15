@@ -45,8 +45,7 @@ CREATE TABLE IF NOT EXISTS electrons (
     start_time DATETIME,
     updated_at DATETIME,
     end_time DATETIME,
-    job_id TEXT,
-    sort_order INTEGER
+    job_id TEXT
 );
 CREATE INDEX IF NOT EXISTS electrons_index ON electrons (
 	parent_dispatch_id, transport_graph_node_id
@@ -67,10 +66,10 @@ CREATE TABLE IF NOT EXISTS edges (
 
 const assetsDDL = `
 CREATE TABLE IF NOT EXISTS assets (
-	id TEXT PRIMARY KEY,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	scheme TEXT NOT NULL,
 	base_path TEXT NOT NULL,
-	key TEXT UNIQUE,
+	key TEXT UNIQUE NOT NULL,
 	size INTEGER NOT NULL,
 	digest_alg TEXT,
 	digest TEXT,
@@ -78,28 +77,16 @@ CREATE TABLE IF NOT EXISTS assets (
 )
 `
 
-const electronAssetsDDL = `
-CREATE TABLE IF NOT EXISTS electronassets (
+const workflowAssetsDDL = `
+CREATE TABLE IF NOT EXISTS assetlinks (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	dispatch_id TEXT REFERENCES dispatches(id) ON DELETE CASCADE NOT NULL,
 	transport_graph_node_id TEXT NOT NULL,
-	asset_id TEXT REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
+	asset_id INTEGER REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
 	name TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS electronassets_index ON electronassets (
+CREATE INDEX IF NOT EXISTS assetlinks_index ON assetlinks (
 	dispatch_id, transport_graph_node_id
-);
-`
-
-const dispatchAssetsDDL = `
-CREATE TABLE IF NOT EXISTS dispatchassets (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	dispatch_id TEXT REFERENCES dispatches(id) ON DELETE CASCADE NOT NULL,
-	asset_id TEXT REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
-	name TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS dispatchassets_index ON dispatchassets (
-	dispatch_id
 );
 `
 
@@ -138,12 +125,7 @@ func EmitDDL(db *sql.DB) error {
 		slog.Error(fmt.Sprintf("Error emitting DDL: %s", err.Error()))
 		return err
 	}
-	_, err = db.Exec(electronAssetsDDL)
-	if err != nil {
-		log.Println("Error emitting: ", err.Error())
-		return err
-	}
-	_, err = db.Exec(dispatchAssetsDDL)
+	_, err = db.Exec(workflowAssetsDDL)
 	if err != nil {
 		log.Println("Error emitting: ", err.Error())
 		return err

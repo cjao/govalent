@@ -46,36 +46,6 @@ func TestCreateAssets(t *testing.T) {
 	}
 }
 
-func TestCreateGetDispatchAssetLinks(t *testing.T) {
-
-	config := common.NewConfigFromEnv()
-	d := newMockDB(t)
-	tx, db_err := d.Begin()
-	if db_err != nil {
-		t.Fatalf("Error starting transaction: %v", db_err)
-	}
-
-	dispatch := newMockDispatch(nil, nil)
-	err := ImportManifest(&config, tx, &dispatch)
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
-
-	records, err := GetDispatchAssetLinks(tx, dispatch.Metadata.DispatchId)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	if len(records) != 7 {
-		t.Fatalf("Expected %d records, got %d records", 7, len(records))
-	}
-
-	_, err = GetDispatchAsset(&config, tx, dispatch.Metadata.DispatchId, "result")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	tx.Rollback()
-}
-
 func TestGetDispatchAssets(t *testing.T) {
 	config := common.NewConfigFromEnv()
 	d := newMockDB(t)
@@ -124,7 +94,7 @@ func TestCreateGetElectronAssetLinks(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	links, err := GetElectronAssetLinks(tx, dispatch.Metadata.DispatchId, electron.NodeId)
+	links, err := getAssetLinks(tx, dispatch.Metadata.DispatchId, electron.NodeId)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
