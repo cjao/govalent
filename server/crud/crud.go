@@ -88,63 +88,6 @@ func InsertEntities(t *sql.Tx, table string, entities []DBEntity) (int, *models.
 	}
 }
 
-func GetEntitiesWithTemplate(t *sql.Tx, template string, entity_refs []DBEntity, filter_values []any) (int, *models.APIError) {
-	count := 0
-	stmt, err := t.Prepare(template)
-	if err != nil {
-		slog.Info(fmt.Sprintf("Error preparing statement from template %s:\n%s\n", template, err.Error()))
-		return 0, models.NewGenericServerError(err)
-	}
-	rows, err := stmt.Query(filter_values...)
-	if err != nil {
-		slog.Info(fmt.Sprintf("Error executing query: %s\n", err.Error()))
-		return 0, models.NewGenericServerError(err)
-	}
-	for rows.Next() && count < len(entity_refs) {
-		field_refs := entity_refs[count].Fieldrefs()
-		err = rows.Scan(field_refs...)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return 0, nil
-			} else {
-				slog.Info(fmt.Sprintf("Error querying row: %s", err.Error()))
-				return 0, models.NewGenericServerError(err)
-			}
-		}
-		count++
-	}
-	slog.Debug(fmt.Sprintf("Returning %d rows", count))
-	return count, nil
-}
-
-func GetEntities(
-	t *sql.Tx,
-	table string,
-	entity_refs []DBEntity,
-	filters Filters,
-	limit int,
-	offset int,
-	sort_key string,
-	ascending bool,
-) (int, *models.APIError) {
-	if len(entity_refs) > 0 {
-		attr_names := entity_refs[0].Fields()
-		joins := entity_refs[0].Joins()
-		template := generateSelectJoinTemplate(
-			table,
-			attr_names,
-			joins,
-			filters.RenderTemplate(),
-			sort_key,
-			ascending,
-			limit,
-			offset,
-		)
-		return GetEntitiesWithTemplate(t, template, entity_refs, filters.RenderValues())
-	}
-	return 0, models.NewNotImplementedError()
-}
-
 func DeleteEntities(t *sql.Tx, table string, filters Filters) *models.APIError {
 	template := generateDeleteTemplate(table, filters.RenderTemplate())
 	stmt, err := t.Prepare(template)

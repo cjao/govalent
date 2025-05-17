@@ -7,28 +7,11 @@ import (
 
 // SQL templates
 
-// Graph manipulation
-const exportEdgesSQL string = `SELECT
-	parent_node_id AS source,
-	child_node_id AS target,
-	edge_name,
-	param_type,
-	arg_index
-	FROM edges
-	WHERE dispatch_id = ?
-	ORDER BY target, source
-`
-
-const nodeIdEidSQL string = `SELECT
-	id, transport_graph_node_id
-	FROM electrons
-	WHERE parent_dispatch_id = ?
-	ORDER BY transport_graph_node_id
-`
-
 type Filters struct {
-	Eq   []KeyValue
-	Like []KeyValue
+	Eq     []KeyValue
+	Like   []KeyValue
+	Limit  int
+	Offset int
 }
 
 func (f *Filters) AddLike(key string, val string) {
@@ -48,6 +31,10 @@ func (f *Filters) RenderValues() []any {
 	n := len(f.Eq)
 	for i, item := range f.Like {
 		vals[n+i] = item.Value
+	}
+	if f.Limit > 0 {
+		vals = append(vals, f.Limit)
+		vals = append(vals, f.Offset)
 	}
 	return vals
 }

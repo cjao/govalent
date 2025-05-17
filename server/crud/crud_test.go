@@ -102,16 +102,21 @@ func TestCreateDispatchMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating dispatch: %v", err)
 	}
-
-	record, err := GetDispatchMetadata(tx, dispatch.Metadata.DispatchId)
+	f := Filters{}
+	(&f).AddEq(db.DISPATCH_TABLE_ID, dispatch.Metadata.DispatchId)
+	ents, err := GetDispatchEntities(tx, f, db.DISPATCH_TABLE_CREATED_AT, true)
 	if err != nil {
 		t.Fatalf("Error retrieving dispatch: %v", err)
 	}
-	if record.DispatchId != dispatch.Metadata.DispatchId {
+	if len(ents) != 1 {
+		t.Fatalf("Failed to locate dispatch %s", dispatch.Metadata.DispatchId)
+	}
+	dispatch_record := ents[0].d
+	if dispatch_record.DispatchId != dispatch.Metadata.DispatchId {
 		t.Fatalf("Wrong dispatch id")
 	}
 
-	lattice_record, err := getLatticeMetadata(tx, dispatch.Metadata.DispatchId)
+	lattice_record := ents[0].l
 	if err != nil {
 		t.Fatalf("Error retrieving dispatch: %v", err)
 	}
@@ -183,10 +188,13 @@ func TestUpdateDispatch(t *testing.T) {
 		t.Fatalf("Error updating dispatch: %v", err)
 	}
 
-	record, err := GetDispatchMetadata(tx, dispatch.Metadata.DispatchId)
+	f := Filters{}
+	(&f).AddEq(db.DISPATCH_TABLE_ID, dispatch.Metadata.DispatchId)
+	ents, err := GetDispatchEntities(tx, f, db.DISPATCH_TABLE_CREATED_AT, true)
 	if err != nil {
 		t.Fatalf("Error retrieving dispatch: %v", err)
 	}
+	record := ents[0].d
 	if record.DispatchId != dispatch.Metadata.DispatchId {
 		t.Fatalf("Wrong dispatch id")
 	}

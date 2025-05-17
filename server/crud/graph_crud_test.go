@@ -5,6 +5,7 @@ import (
 
 	"github.com/casey/govalent/server/common"
 	"github.com/casey/govalent/server/models"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateGraph(t *testing.T) {
@@ -42,7 +43,7 @@ func TestCreateGraph(t *testing.T) {
 		t.Fatalf("Expected %d electrons, actual %d electrons", 3, len(electrons_new))
 	}
 
-	edges_new, err := GetAllEdges(tx, dispatch.Metadata.DispatchId)
+	edges_new, err := getAllEdges(tx, dispatch.Metadata.DispatchId)
 	if err != nil {
 		t.Fatalf("Error retrieving edges: %s", err.Error())
 	}
@@ -67,6 +68,11 @@ func TestTopologicalSort(t *testing.T) {
 		{NodeId: 2},
 		{NodeId: 3},
 	}
+	//       3
+	//       |
+	//   1   2
+	//    \ /
+	//     0
 	edges := []models.Edge{
 		{
 			Source: 1,
@@ -86,8 +92,12 @@ func TestTopologicalSort(t *testing.T) {
 		Links: edges,
 	}
 	gv := NewGraphView(&g)
-	_, err := gv.sortTopologically()
+	sorted_nodes, err := gv.sortTopologically()
 	if err != nil {
 		t.Fatalf("Error in topological sort: %v", err)
 	}
+	assert.Equal(t, 1, sorted_nodes[0])
+	assert.Equal(t, 3, sorted_nodes[1])
+	assert.Equal(t, 2, sorted_nodes[2])
+	assert.Equal(t, 0, sorted_nodes[3])
 }

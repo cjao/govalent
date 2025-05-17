@@ -24,10 +24,6 @@ type EdgeEntity struct {
 	e           *models.Edge
 }
 
-func newEdgeEntity(dispatch_id string, e *models.Edge) EdgeEntity {
-	return EdgeEntity{dispatch_id: dispatch_id, e: e}
-}
-
 func (e *EdgeEntity) Fields() []string {
 	return EDGE_ENTITY_KEYS
 }
@@ -56,6 +52,38 @@ func (e *EdgeEntity) Fieldrefs() []any {
 
 func (e *EdgeEntity) Joins() []JoinCondition {
 	return []JoinCondition{}
+}
+
+func GetEdgeEntities(t *sql.Tx, f Filters, sort_key string, ascending bool) ([]EdgeEntity, *models.APIError) {
+	template := generateSelectTemplate(
+		db.EDGES_TABLE,
+		EDGE_ENTITY_KEYS,
+		(&f).RenderTemplate(),
+		sort_key,
+		ascending,
+		f.Limit > 0,
+	)
+	stmt, err := t.Prepare(template)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error preparing statement: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
+	}
+	rows, err := stmt.Query((&f).RenderValues()...)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error executing query: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
+	}
+	res := make([]EdgeEntity, 0)
+	for rows.Next() {
+		e := EdgeEntity{e: &models.Edge{}}
+		err := rows.Scan((&e).Fieldrefs()...)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error querying row: %s\n", err.Error()))
+			return nil, models.NewGenericServerError(err)
+		}
+		res = append(res, e)
+	}
+	return res, nil
 }
 
 type GraphView struct {
@@ -179,39 +207,6 @@ func createEdges(t *sql.Tx, dispatch_id string, edges []models.Edge) (int, *mode
 	return len(ents), nil
 }
 
-func getNodeIdEidMap(t *sql.Tx, dispatch_id string, invert bool) (map[int]int, *models.APIError) {
-
-	results := make(map[int]int)
-	stmt, err := t.Prepare(nodeIdEidSQL)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error preparing statement: %s\n", err.Error()))
-		return nil, models.NewGenericServerError(err)
-	}
-	rows, err := stmt.Query(dispatch_id)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error executing query: %s\n", err.Error()))
-		return nil, models.NewGenericServerError(err)
-	}
-	for rows.Next() {
-		var primary_id, node_id int
-		err = rows.Scan(&primary_id, &node_id)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Error querying row: %s\n", err.Error()))
-			return nil, models.NewGenericServerError(err)
-		}
-		results[primary_id] = node_id
-	}
-	if !invert {
-		inverted := make(map[int]int)
-		for key, val := range results {
-			inverted[val] = key
-		}
-		return inverted, nil
-	}
-
-	return results, nil
-}
-
 // TODO: check if passing tg by values allows mutating node and link slices
 func CreateGraph(c *common.Config, t *sql.Tx, dispatch_id string, tg *models.Graph) *models.APIError {
 
@@ -239,7 +234,7 @@ func CreateGraph(c *common.Config, t *sql.Tx, dispatch_id string, tg *models.Gra
 }
 
 func GetGraph(c *common.Config, t *sql.Tx, dispatch_id string, load_assets bool) (models.Graph, *models.APIError) {
-	edges, err := GetAllEdges(t, dispatch_id)
+	edges, err := getAllEdges(t, dispatch_id)
 	if err != nil {
 		return models.Graph{}, err
 	}
@@ -250,45 +245,40 @@ func GetGraph(c *common.Config, t *sql.Tx, dispatch_id string, load_assets bool)
 	return models.Graph{Nodes: electrons, Links: edges}, nil
 }
 
-func GetAllEdges(t *sql.Tx, dispatch_id string) ([]models.Edge, *models.APIError) {
+func getAllEdges(t *sql.Tx, dispatch_id string) ([]models.Edge, *models.APIError) {
 
-	edges := make([]models.Edge, 0)
-	stmt, err := t.Prepare(exportEdgesSQL)
+	f := Filters{}
+	(&f).AddEq(db.EDGES_TABLE_DISPATCH, dispatch_id)
+	ents, err := GetEdgeEntities(t, f, db.EDGES_TABLE_CHILD, true)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error preparing statement: %s\n", err.Error()))
-		return nil, models.NewGenericServerError(err)
+		return nil, err
 	}
-	rows, err := stmt.Query(dispatch_id)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error executing query: %s\n", err.Error()))
-		return nil, models.NewGenericServerError(err)
+	edges := make([]models.Edge, len(ents))
+	for i := range edges {
+		edges[i] = *ents[i].e
 	}
-	for rows.Next() {
-		e := models.Edge{}
-
-		err := rows.Scan(&e.Source, &e.Target, &e.Metadata.Name, &e.Metadata.ParamType, &e.Metadata.ArgIndex)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Error querying row: %s\n", err.Error()))
-			return nil, models.NewGenericServerError(err)
-		}
-		edges = append(edges, e)
-	}
-
-	// // Map internal electron id to node id
-	// eid_nodeid_map, err := getNodeIdEidMap(t, dispatch_id, true)
-	// for _, e := range edges {
-	// 	e.Source = eid_nodeid_map[e.Source]
-	// 	e.Target = eid_nodeid_map[e.Target]
-	// }
-
 	return edges, nil
 }
 
-func GetChildNodes(t *sql.Tx, dispatch_id string, node_id int) ([]models.ElectronMeta, *models.APIError) {
-	panic("Not Implemented")
+func GetOutgoingEdges(t *sql.Tx, dispatch_id string, node_id int) ([]EdgeEntity, *models.APIError) {
+	f := Filters{}
+	(&f).AddEq(db.EDGES_TABLE_DISPATCH, dispatch_id)
+	(&f).AddEq(db.EDGES_TABLE_PARENT, node_id)
+	ents, err := GetEdgeEntities(t, f, db.EDGES_TABLE_ID, true)
+	if err != nil {
+		return nil, err
+	}
+	return ents, nil
 }
 
 // For computing electron inputs
-func GetIncomingEdges(t *sql.Tx, dispatch_id string, node_id int) ([]models.Edge, *models.APIError) {
-	panic("Not Implemented")
+func GetIncomingEdges(t *sql.Tx, dispatch_id string, node_id int) ([]EdgeEntity, *models.APIError) {
+	f := Filters{}
+	(&f).AddEq(db.EDGES_TABLE_DISPATCH, dispatch_id)
+	(&f).AddEq(db.EDGES_TABLE_CHILD, node_id)
+	ents, err := GetEdgeEntities(t, f, db.EDGES_TABLE_ID, true)
+	if err != nil {
+		return nil, err
+	}
+	return ents, nil
 }

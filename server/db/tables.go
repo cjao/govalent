@@ -49,6 +49,7 @@ const (
 	ELECTRON_TABLE_START_TIME             = "start_time"
 	ELECTRON_TABLE_END_TIME               = "end_time"
 	ELECTRON_TABLE_SORT_ORDER             = "sort_order"
+	EDGES_TABLE_ID                        = "id"
 	EDGES_TABLE_CHILD                     = "child_node_id"
 	EDGES_TABLE_PARENT                    = "parent_node_id"
 	EDGES_TABLE_DISPATCH                  = "dispatch_id"

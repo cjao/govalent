@@ -3,6 +3,7 @@ package crud
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"github.com/casey/govalent/server/common"
 	"github.com/casey/govalent/server/db"
@@ -81,6 +82,38 @@ func (m *DispatchEntity) Fieldrefs() []any {
 
 func (m *DispatchEntity) Joins() []JoinCondition {
 	return []JoinCondition{}
+}
+
+func GetDispatchEntities(t *sql.Tx, f Filters, sort_key string, ascending bool) ([]DispatchEntity, *models.APIError) {
+	template := generateSelectTemplate(
+		db.DISPATCH_TABLE,
+		DISPATCH_ENTITY_KEYS,
+		(&f).RenderTemplate(),
+		sort_key,
+		ascending,
+		f.Limit > 0,
+	)
+	stmt, err := t.Prepare(template)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error preparing statement: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
+	}
+	rows, err := stmt.Query((&f).RenderValues()...)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error executing query: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
+	}
+	res := make([]DispatchEntity, 0)
+	for rows.Next() {
+		e := DispatchEntity{d: &models.DispatchMeta{}, l: &models.LatticeMeta{}}
+		err := rows.Scan((&e).Fieldrefs()...)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error querying row: %s\n", err.Error()))
+			return nil, models.NewGenericServerError(err)
+		}
+		res = append(res, e)
+	}
+	return res, nil
 }
 
 // TODO: strategy for updates
@@ -185,67 +218,36 @@ func CreateDispatchMetadata(t *sql.Tx, d *models.DispatchMeta, l *models.Lattice
 
 func GetDispatchSummaries(t *sql.Tx, dispatch_id string, page int, count int) (models.GetBulkDispatchesResponse, *models.APIError) {
 	filters := Filters{}
-	d_meta := make([]models.DispatchMeta, count)
-	l_meta := make([]models.LatticeMeta, count)
 	// TODO: don't retrieve the whole record
-	ents := make([]DBEntity, count)
-	for i := range ents {
-		ents[i] = &DispatchEntity{d: &d_meta[i], l: &l_meta[i]}
-	}
 
 	if len(dispatch_id) > 0 {
 		(&filters).AddEq(db.DISPATCH_TABLE_ID, dispatch_id)
 	}
-	n, err := GetEntities(
-		t,
-		db.DISPATCH_TABLE,
-		ents,
-		filters,
-		count,
-		page*count,
-		db.DISPATCH_TABLE_CREATED_AT,
-		false,
-	)
+	filters.Limit = count
+	filters.Offset = page * count
+	ents, err := GetDispatchEntities(t, filters, db.DISPATCH_TABLE_CREATED_AT, false)
 	if err != nil {
-		return models.GetBulkDispatchesResponse{}, models.NewGenericServerError(err)
+		return models.GetBulkDispatchesResponse{}, err
+	}
+	d_meta := make([]models.DispatchMeta, len(ents))
+	for i := range len(ents) {
+		d_meta[i] = *ents[i].d
 	}
 
-	return models.GetBulkDispatchesResponse{Records: d_meta[:n]}, nil
+	return models.GetBulkDispatchesResponse{Records: d_meta}, nil
 }
 
 func getDispatchEntity(t *sql.Tx, dispatch_id string) (DispatchEntity, *models.APIError) {
 	filters := Filters{}
 	(&filters).AddEq(db.DISPATCH_TABLE_ID, dispatch_id)
-	ents := make([]DBEntity, 1)
-	d := models.DispatchMeta{}
-	l := models.LatticeMeta{}
-	ent := DispatchEntity{&d, &l}
-	ents[0] = &ent
-	n, err := GetEntities(t, db.DISPATCH_TABLE, ents, filters, 1, 0, db.DISPATCH_TABLE_ID, true)
+	ents, err := GetDispatchEntities(t, filters, db.DISPATCH_TABLE_CREATED_AT, false)
 	if err != nil {
 		return DispatchEntity{}, err
 	}
-	if n == 0 {
+	if len(ents) == 0 {
 		return DispatchEntity{}, models.NewGenericClientError(fmt.Sprintf("Dispatch %s not found\n", dispatch_id))
 	}
-	return ent, nil
-}
-
-func GetDispatchMetadata(t *sql.Tx, dispatch_id string) (models.DispatchMeta, *models.APIError) {
-	ent, err := getDispatchEntity(t, dispatch_id)
-	if err != nil {
-		return models.DispatchMeta{}, err
-	}
-	return *ent.d, err
-}
-
-func getLatticeMetadata(t *sql.Tx, dispatch_id string) (models.LatticeMeta, *models.APIError) {
-	ent, err := getDispatchEntity(t, dispatch_id)
-	if err != nil {
-		return models.LatticeMeta{}, err
-	}
-	return *ent.l, nil
-
+	return ents[0], nil
 }
 
 func GetDispatch(c *common.Config, t *sql.Tx, dispatch_id string, load_assets bool) (models.DispatchSchema, *models.APIError) {

@@ -75,6 +75,38 @@ func (e *ElectronEntity) Joins() []JoinCondition {
 	return []JoinCondition{}
 }
 
+func GetElectronEntities(t *sql.Tx, f Filters, sort_key string, ascending bool) ([]ElectronEntity, *models.APIError) {
+	template := generateSelectTemplate(
+		db.ELECTRON_TABLE,
+		ELECTRON_ENTITY_KEYS,
+		(&f).RenderTemplate(),
+		sort_key,
+		ascending,
+		f.Limit > 0,
+	)
+	stmt, err := t.Prepare(template)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error preparing statement: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
+	}
+	rows, err := stmt.Query((&f).RenderValues()...)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error executing query: %s\n", err.Error()))
+		return nil, models.NewGenericServerError(err)
+	}
+	res := make([]ElectronEntity, 0)
+	for rows.Next() {
+		e := ElectronEntity{meta: &models.ElectronMeta{}}
+		err := rows.Scan((&e).Fieldrefs()...)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error querying row: %s\n", err.Error()))
+			return nil, models.NewGenericServerError(err)
+		}
+		res = append(res, e)
+	}
+	return res, nil
+}
+
 type NodeIdEntity struct {
 	dispatch_id string
 	node_id     int
@@ -161,63 +193,32 @@ func createElectronAssets(
 }
 
 func GetElectronMetadata(t *sql.Tx, dispatch_id string, node_id int) (models.ElectronMeta, *models.APIError) {
-
-	electron := models.ElectronMeta{}
-	ent := newElectronEntity(dispatch_id, node_id, &electron)
-	filter := Filters{}
-	(&filter).AddEq(db.ELECTRON_TABLE_DISPATCH_ID, dispatch_id)
-	(&filter).AddEq(db.ELECTRON_TABLE_NODE_ID, node_id)
-	n, err := GetEntities(t, db.ELECTRON_TABLE, []DBEntity{&ent}, filter, 1, 0, db.ELECTRON_TABLE_NODE_ID, true)
-	if n == 0 {
-		return electron, models.NewNotFoundError(db.ERR_NOT_FOUND)
+	f := Filters{}
+	(&f).AddEq(db.ELECTRON_TABLE_DISPATCH_ID, dispatch_id)
+	(&f).AddEq(db.ELECTRON_TABLE_NODE_ID, node_id)
+	ents, err := GetElectronEntities(t, f, db.ELECTRON_TABLE_NODE_ID, true)
+	if err != nil {
+		return models.ElectronMeta{}, err
 	}
-	return electron, err
+	if len(ents) == 0 {
+		return models.ElectronMeta{}, models.NewNotFoundError(db.ERR_NOT_FOUND)
+	}
+	return *ents[0].meta, nil
 }
 
 func getAllElectronMeta(t *sql.Tx, dispatch_id string) ([]models.ElectronMeta, *models.APIError) {
-	results := make([]models.ElectronMeta, 0)
-	num_rows := 0
 
 	filters := Filters{}
 	(&filters).AddEq(db.ELECTRON_TABLE_DISPATCH_ID, dispatch_id)
-
-	template := generateSelectTemplate(
-		db.ELECTRON_TABLE,
-		(&ElectronEntity{}).Fields(),
-		filters.RenderTemplate(),
-		db.ELECTRON_TABLE_NODE_ID,
-		true,
-		false,
-	)
-	stmt, err := t.Prepare(template)
+	ents, err := GetElectronEntities(t, filters, db.ELECTRON_TABLE_NODE_ID, true)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error preparing statement: %s\n", err.Error()))
-		return nil, models.NewGenericServerError(err)
+		return nil, err
 	}
-	rows, err := stmt.Query(filters.RenderValues()...)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error executing query: %s\n", err.Error()))
-		return nil, models.NewGenericServerError(err)
+	results := make([]models.ElectronMeta, len(ents))
+	for i := range results {
+		results[i] = *ents[i].meta
 	}
 
-	for rows.Next() {
-		results = append(results, models.ElectronMeta{})
-
-		// node_id will be overwritten by Scan
-		ent := newElectronEntity(dispatch_id, num_rows, &results[num_rows])
-
-		err = rows.Scan((&ent).Fieldrefs()...)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Error querying row: %s\n", err.Error()))
-			return nil, models.NewGenericServerError(err)
-		}
-		// Check node_ids range from 0 to number of records - 1
-		if (&ent).node_id != num_rows {
-			slog.Warn(fmt.Sprintf("Error querying row: expected node_id %d, got node_id %d\n", num_rows, (&ent).node_id))
-		}
-		num_rows += 1
-	}
-	slog.Debug(fmt.Sprintf("Returning %d electron records\n", num_rows))
 	return results, nil
 }
 
@@ -256,37 +257,6 @@ func GetAllElectrons(c *common.Config, t *sql.Tx, dispatch_id string, load_asset
 	}
 	// retrieve assets
 	return electrons, nil
-}
-
-func GetSortedTaskGroup(t *sql.Tx, dispatch_id string, task_group_id int) ([]int, *models.APIError) {
-	limit := 10
-	results := make([]int, limit)
-	offset := 0
-	count := limit
-	order_by := db.ELECTRON_TABLE_SORT_ORDER
-	var err *models.APIError
-
-	ents := make([]NodeIdEntity, limit)
-	ifaces := make([]DBEntity, limit)
-	for i := 0; i < limit; i++ {
-		ifaces[i] = &ents[i]
-	}
-
-	filters := Filters{}
-	(&filters).AddEq(db.ELECTRON_TABLE_DISPATCH_ID, dispatch_id)
-	(&filters).AddEq(db.ELECTRON_TABLE_GID, task_group_id)
-	for count >= limit {
-		for i := 0; i < limit; i++ {
-			results = append(results, 0)
-		}
-		for i := 0; i < limit; i++ {
-			ents[i].node_id = results[offset+i]
-		}
-		count, err = GetEntities(t, db.ELECTRON_TABLE, ifaces, filters, limit, offset, order_by, true)
-		offset += count
-	}
-
-	return results[:offset], err
 }
 
 func CanUpdateElectronStatus(db *sql.DB, dispatch_id string, node_id int, update *models.ElectronStatusUpdate) bool {
